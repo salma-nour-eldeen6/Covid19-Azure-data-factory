@@ -1,0 +1,143 @@
+{
+	"name": "df_process_populations",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_population_raw_tsv",
+						"type": "DatasetReference"
+					},
+					"name": "sourcePopulation"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_country_lookup",
+						"type": "DatasetReference"
+					},
+					"name": "dimCountry"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_processed_population",
+						"type": "DatasetReference"
+					},
+					"name": "sink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "splitAgeAndCountryCode",
+					"description": " "
+				},
+				{
+					"name": "select"
+				},
+				{
+					"name": "pivot"
+				},
+				{
+					"name": "join"
+				},
+				{
+					"name": "indicDeGeoTime"
+				},
+				{
+					"name": "SelectFinalColumns"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          {indic_de,geo\\time} as string,",
+				"          {2008 } as integer,",
+				"          {2009 } as integer,",
+				"          {2010 } as integer,",
+				"          {2011 } as integer,",
+				"          {2012 } as integer,",
+				"          {2013 } as integer,",
+				"          {2014 } as integer,",
+				"          {2015 } as integer,",
+				"          {2016 } as integer,",
+				"          {2017 } as integer,",
+				"          {2018 } as integer,",
+				"          {2019 } as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> sourcePopulation",
+				"source(output(",
+				"          country as string,",
+				"          country_code_2_digit as string,",
+				"          country_code_3_digit as string,",
+				"          continent as string,",
+				"          population as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> dimCountry",
+				"indicDeGeoTime derive(age_group = split(cleaned_geo, ';')[1],",
+				"          country_code = split(cleaned_geo, ';')[2]) ~> splitAgeAndCountryCode",
+				"sourcePopulation select(mapColumn(",
+				"          indic_de_geo_time = {indic_de,geo\\time},",
+				"          {percentage_2019 } = {2019 }",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select",
+				"splitAgeAndCountryCode pivot(groupBy(country_code),",
+				"     pivotBy(age_group, ['PC|Y0|14', 'PC|Y15|24', 'PC|Y25|49', 'PC|Y50|64', 'PC|Y65|79', 'PC|Y80|MAX']),",
+				"     count = sum({percentage_2019 }),",
+				"     columnNaming: '$N$V',",
+				"     lateral: true) ~> pivot",
+				"pivot, dimCountry join(country_code == country_code_2_digit,",
+				"     joinType:'inner',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join",
+				"select derive(cleaned_geo = replace(\r",
+				"    replace(\r",
+				"        replace(\r",
+				"            trim(indic_de_geo_time),\r",
+				"            ',', ';'      \r",
+				"        ),\r",
+				"        '_', '|'        \r",
+				"    ),\r",
+				"    '؛', '|'           \r",
+				")) ~> indicDeGeoTime",
+				"join select(mapColumn(",
+				"          country,",
+				"          country_code_2_digit,",
+				"          country_code_3_digit,",
+				"          population,",
+				"          {countPC|Y0|14},",
+				"          {countPC|Y15|24},",
+				"          {countPC|Y25|49},",
+				"          {countPC|Y50|64},",
+				"          {countPC|Y65|79},",
+				"          {countPC|Y80|MAX}",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> SelectFinalColumns",
+				"SelectFinalColumns sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          country as string,",
+				"          country_code_2_digit as string,",
+				"          country_code_3_digit as string,",
+				"          cases_count as string,",
+				"          population as string,",
+				"          death_count as string,",
+				"          reported_date as string,",
+				"          source as string",
+				"     ),",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> sink"
+			]
+		}
+	}
+}
