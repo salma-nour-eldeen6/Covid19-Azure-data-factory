@@ -1,6 +1,7 @@
 # Covid19‑Azure‑Data‑Factory Project
 
-<img width="953" height="536" alt="image" src="https://github.com/user-attachments/assets/9d0dfbf1-433d-439b-a8e3-8f403b60dd14" />
+<img width="1199" height="622" alt="image" src="https://github.com/user-attachments/assets/9d941213-fa8d-4386-860e-53969688ad67" />
+
 
 
 ## 🎯 Overview
